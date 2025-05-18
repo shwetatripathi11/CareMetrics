@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { UserPlus, Search, Filter } from 'lucide-react';
+import { UserPlus, Search, Filter, Trash2, X } from 'lucide-react';
 import { supabase } from '../config/supabase';
 import { Patient } from '../types/database';
 import Sidebar from '../components/Sidebar';
@@ -17,6 +17,9 @@ const Patients = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [filterGender, setFilterGender] = useState<string>('');
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     const message = location.state?.message;
@@ -27,25 +30,55 @@ const Patients = () => {
     }
   }, [location]);
 
+  const fetchPatients = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('patients')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setPatients(data || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch patients');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchPatients = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('patients')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (error) throw error;
-        setPatients(data || []);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch patients');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchPatients();
   }, []);
+
+  const handleDeleteClick = (e: React.MouseEvent, patient: Patient) => {
+    e.stopPropagation(); // Prevent row click event
+    setPatientToDelete(patient);
+    setDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!patientToDelete) return;
+    
+    setDeleteLoading(true);
+    try {
+      const { error } = await supabase
+        .from('patients')
+        .delete()
+        .eq('id', patientToDelete.id);
+
+      if (error) throw error;
+
+      // Remove patient from local state
+      setPatients(patients.filter(p => p.id !== patientToDelete.id));
+      setSuccessMessage('Patient deleted successfully');
+      setDeleteModalOpen(false);
+      setPatientToDelete(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete patient');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
 
   const filteredPatients = patients.filter(patient => {
     const matchesSearch = patient.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -77,16 +110,18 @@ const Patients = () => {
             </button>
           </div>
 
-          {successMessage && (
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="bg-green-500/20 text-green-400 p-4 rounded-lg border border-green-500/20"
-            >
-              {successMessage}
-            </motion.div>
-          )}
+          <AnimatePresence>
+            {successMessage && (
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="bg-green-500/20 text-green-400 p-4 rounded-lg border border-green-500/20"
+              >
+                {successMessage}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <AnimatedCard>
             <div className="p-6 space-y-6">
@@ -154,6 +189,9 @@ const Patients = () => {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                           Hospital
                         </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                          Actions
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -163,26 +201,51 @@ const Patients = () => {
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: index * 0.1 }}
-                          onClick={() => navigate(`/patients/${patient.id}`)}
                           className="hover:bg-purple-900/20 transition-colors cursor-pointer"
                         >
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <td 
+                            className="px-6 py-4 whitespace-nowrap text-sm"
+                            onClick={() => navigate(`/patients/${patient.id}`)}
+                          >
                             {patient.patient_id}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <td 
+                            className="px-6 py-4 whitespace-nowrap text-sm"
+                            onClick={() => navigate(`/patients/${patient.id}`)}
+                          >
                             {patient.full_name}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm capitalize">
+                          <td 
+                            className="px-6 py-4 whitespace-nowrap text-sm capitalize"
+                            onClick={() => navigate(`/patients/${patient.id}`)}
+                          >
                             {patient.gender || 'Not specified'}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <td 
+                            className="px-6 py-4 whitespace-nowrap text-sm"
+                            onClick={() => navigate(`/patients/${patient.id}`)}
+                          >
                             {patient.date_of_birth || 'Not specified'}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <td 
+                            className="px-6 py-4 whitespace-nowrap text-sm"
+                            onClick={() => navigate(`/patients/${patient.id}`)}
+                          >
                             {patient.sa || 'None'}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <td 
+                            className="px-6 py-4 whitespace-nowrap text-sm"
+                            onClick={() => navigate(`/patients/${patient.id}`)}
+                          >
                             {patient.working_hospital || 'Not specified'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            <button
+                              onClick={(e) => handleDeleteClick(e, patient)}
+                              className="p-2 hover:bg-red-500/20 rounded-lg transition-colors group"
+                            >
+                              <Trash2 className="w-5 h-5 text-red-400 group-hover:text-red-300" />
+                            </button>
                           </td>
                         </motion.tr>
                       ))}
@@ -194,6 +257,64 @@ const Patients = () => {
           </AnimatedCard>
         </div>
       </main>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {deleteModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-gray-800 rounded-xl p-6 max-w-md w-full border border-purple-900/20"
+            >
+              <div className="flex justify-between items-start mb-4">
+                <h3 className="text-xl font-semibold">Delete Patient</h3>
+                <button
+                  onClick={() => setDeleteModalOpen(false)}
+                  className="p-1 hover:bg-gray-700 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <p className="text-gray-300 mb-6">
+                Are you sure you want to delete {patientToDelete?.full_name}? This action cannot be undone.
+              </p>
+
+              <div className="flex justify-end gap-4">
+                <button
+                  onClick={() => setDeleteModalOpen(false)}
+                  className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors"
+                  disabled={deleteLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteConfirm}
+                  disabled={deleteLoading}
+                  className="px-4 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 
+                    transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {deleteLoading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    'Delete Patient'
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
