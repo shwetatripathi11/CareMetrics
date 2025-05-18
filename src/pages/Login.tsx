@@ -44,7 +44,7 @@ const Login = () => {
       >
         <div>
           <h1 className="text-3xl font-bold text-center bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-            MediDash
+            CareMetrics
           </h1>
           <h2 className="mt-6 text-center text-xl text-gray-300">
             Sign in to your account
