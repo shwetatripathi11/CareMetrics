@@ -7,6 +7,7 @@ interface AuthContextType {
   session: Session | null;
   doctor: Doctor | null;
   loading: boolean;
+  error: string | null;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, name: string, specialization: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
@@ -18,32 +19,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [doctor, setDoctor] = useState<Doctor | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session?.user.id) {
-        fetchDoctor(session.user.id);
-      } else {
+    const initializeAuth = async () => {
+      try {
+        // Check if Supabase is properly configured
+        if (!process.env.REACT_APP_SUPABASE_URL || !process.env.REACT_APP_SUPABASE_ANON_KEY) {
+          throw new Error('Supabase configuration is missing. Please check your .env file.');
+        }
+
+        // Get initial session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+
+        setSession(session);
+        if (session?.user.id) {
+          await fetchDoctor(session.user.id);
+        } else {
+          setLoading(false);
+        }
+
+        // Listen for auth changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+          setSession(session);
+          if (session?.user.id) {
+            await fetchDoctor(session.user.id);
+          } else {
+            setDoctor(null);
+            setLoading(false);
+          }
+        });
+
+        return () => {
+          subscription.unsubscribe();
+        };
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        setError(error instanceof Error ? error.message : 'Failed to initialize authentication');
         setLoading(false);
       }
-    });
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setSession(session);
-      if (session?.user.id) {
-        await fetchDoctor(session.user.id);
-      } else {
-        setDoctor(null);
-        setLoading(false);
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
     };
+
+    initializeAuth();
   }, []);
 
   const fetchDoctor = async (userId: string) => {
@@ -58,6 +76,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setDoctor(data);
     } catch (error) {
       console.error('Error fetching doctor:', error);
+      setError(error instanceof Error ? error.message : 'Failed to fetch doctor data');
       setDoctor(null);
     } finally {
       setLoading(false);
@@ -66,6 +85,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signIn = async (email: string, password: string) => {
     try {
+      setLoading(true);
+      setError(null);
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -73,11 +94,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { error };
     } catch (error) {
       return { error };
+    } finally {
+      setLoading(false);
     }
   };
 
   const signUp = async (email: string, password: string, name: string, specialization: string) => {
     try {
+      setLoading(true);
+      setError(null);
       // First create the auth user
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
@@ -102,8 +127,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           ]);
 
         if (profileError) {
-          // If profile creation fails, we should ideally clean up the auth user
-          // but for simplicity we'll just return the error
           return { error: profileError };
         }
       }
@@ -111,17 +134,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { error: null };
     } catch (error) {
       return { error };
+    } finally {
+      setLoading(false);
     }
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      setLoading(true);
+      setError(null);
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error('Error signing out:', error);
+      setError(error instanceof Error ? error.message : 'Failed to sign out');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const value = {
     session,
     doctor,
     loading,
+    error,
     signIn,
     signUp,
     signOut,

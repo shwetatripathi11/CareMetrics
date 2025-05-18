@@ -1,8 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { FileText, UserPlus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const QuickMenu = () => {
+  const navigate = useNavigate();
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {/* Prescribe Card */}
@@ -12,6 +15,7 @@ const QuickMenu = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
+        onClick={() => navigate('/prescriptions')}
       >
         <div className="flex items-center gap-4">
           <div className="p-3 bg-purple-500/30 rounded-xl">
@@ -31,6 +35,7 @@ const QuickMenu = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
+        onClick={() => navigate('/register-patient')}
       >
         <div className="flex items-center gap-4">
           <div className="p-3 bg-amber-500/30 rounded-xl">
