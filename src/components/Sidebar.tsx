@@ -119,7 +119,7 @@ const Sidebar = () => {
             animate={{ opacity: isOpen ? 1 : 0 }}
           >
             <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-              MediDash
+              CareMetrics
             </h1>
           </motion.div>
 

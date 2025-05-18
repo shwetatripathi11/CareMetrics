@@ -1,6 +1,6 @@
-# Medical Dashboard
+# CareMetrics
 
-A modern medical prescription management system built with React, TypeScript, and Supabase.
+A comprehensive healthcare management system for tracking patient care, prescriptions, and medical records. Built with React, TypeScript, and Supabase.
 
 ## Features
 
@@ -24,7 +24,7 @@ A modern medical prescription management system built with React, TypeScript, an
 1. Clone the repository:
 ```bash
 git clone [your-repo-url]
-cd medical-dashboard
+cd care-metrics
 ```
 
 2. Install dependencies:
